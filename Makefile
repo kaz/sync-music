@@ -1,13 +1,13 @@
 IMAGE=sync-music
 DOCKER=docker run -ti --rm -v $(PWD):/workdir -v $(PWD)/token:/root/.local/share/google-music $(IMAGE)
 
-.PHONY: sync
-sync: image
+.PHONY: dryrun
+dryrun: image
 	$(DOCKER) python3 sync.py
 
-.PHONY: debug
-debug: image
-	$(DOCKER) sh
+.PHONY: sync
+sync: image
+	$(DOCKER) python3 sync.py --doit
 
 .PHONY: image
 image:
