@@ -59,9 +59,9 @@ for pwd, dirs, files in os.walk("./library"):
 
 	cover = [f for f in files if re.search("\.(jpe?g|png)$", f)]
 	if len(cover) == 0:
-		print(f"WARN: no cover arts were found at {pwd}")
+		print(f"WARN: No cover arts were found at {pwd}")
 	elif len(cover) > 1:
-		print(f"WARN: more than one cover arts were found at {pwd}")
+		print(f"WARN: More than one cover arts were found at {pwd} ({cover[0]} will be used)")
 
 	for song in songs:
 		executor.submit(sync, f"{pwd}/{song}", f"{pwd}/{cover[0]}" if len(cover) > 0 else None)
