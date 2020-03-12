@@ -9,6 +9,10 @@ dryrun: image
 sync: image
 	$(DOCKER) python3 sync.py --doit
 
+.PHONY: debug
+debug: image
+	$(DOCKER) sh
+
 .PHONY: image
 image:
 	docker build --quiet --tag $(IMAGE) .
