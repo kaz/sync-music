@@ -2,7 +2,7 @@ import re
 import os
 import sys
 import json
-import tempfile
+import hashlib
 import threading
 import traceback
 import subprocess
@@ -36,11 +36,22 @@ def dryrun(song, cover):
 	print(f"DRYRUN: {song}")
 
 def upload(song, cover):
-	tmp = tempfile.NamedTemporaryFile(suffix=".mp3")
-	subprocess.run(["ffmpeg", "-y", "-i", song, "-c:a", "libmp3lame", "-b:a", "320k", tmp.name], stderr=subprocess.DEVNULL)
-	result = mm.upload(tmp.name, album_art_path=cover, no_sample=True)
-	tmp.close()
+	key = hashlib.sha512(song.encode("utf-8")).hexdigest()
+	tmpSong = f"/tmp/{key}.mp3"
+	tmpCover = None
+
+	if cover is None:
+		print(f"NOTICE: using embedded cover art for {song}")
+		cover = tmpCover = f"/tmp/{key}.jpg"
+		subprocess.run(["ffmpeg", "-y", "-i", song, "-an", "-c:v", "copy", tmpCover], stderr=subprocess.DEVNULL)
+
+	subprocess.run(["ffmpeg", "-y", "-i", song, "-c:a", "libmp3lame", "-b:a", "320k", tmpSong], stderr=subprocess.DEVNULL)
+	result = mm.upload(tmpSong, album_art_path=cover, no_sample=True)
 	print(f"{result['reason']}: {song}")
+
+	os.unlink(tmpSong)
+	if tmpCover is not None:
+		os.unlink(tmpCover)
 
 	if result["reason"] in ("Uploaded", "ALREADY_EXISTS"):
 		with lock:
