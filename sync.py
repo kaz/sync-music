@@ -23,7 +23,7 @@ mm = google_music.musicmanager(uploader_id=state["uploader_id"])
 
 def sync(song, cover):
 	try:
-		if song in state["song_id_mapping"]:
+		if song in state["songs"] and state["songs"][song]["ok"]:
 			print(f"skipped: {song}")
 			return
 
@@ -37,27 +37,32 @@ def dryrun(song, cover):
 
 def upload(song, cover):
 	key = hashlib.sha512(song.encode("utf-8")).hexdigest()
-	tmpSong = f"/tmp/{key}.mp3"
-	tmpCover = None
+
+	resizedCover = f"/tmp/{key}.png"
+	extractedCover = None
 
 	if cover is None:
 		print(f"NOTICE: using embedded cover art for {song}")
-		cover = tmpCover = f"/tmp/{key}.jpg"
-		subprocess.run(["ffmpeg", "-y", "-i", song, "-an", "-c:v", "copy", tmpCover], stderr=subprocess.DEVNULL)
+		cover = extractedCover = f"/tmp/{key}.jpg"
+		subprocess.run(["ffmpeg", "-y", "-i", song, "-an", "-c:v", "copy", extractedCover], stderr=subprocess.DEVNULL)
 
-	subprocess.run(["ffmpeg", "-y", "-i", song, "-c:a", "libmp3lame", "-b:a", "320k", tmpSong], stderr=subprocess.DEVNULL)
-	result = mm.upload(tmpSong, album_art_path=cover, no_sample=True)
+	subprocess.run(["magick", "convert", cover, "-resize", "768x768>", resizedCover], stderr=subprocess.DEVNULL)
+
+	result = mm.upload(song, album_art_path=resizedCover)
 	print(f"{result['reason']}: {song}")
 
-	os.unlink(tmpSong)
-	if tmpCover is not None:
-		os.unlink(tmpCover)
+	os.unlink(resizedCover)
+	if extractedCover is not None:
+		os.unlink(extractedCover)
 
-	if result["reason"] in ("Uploaded", "ALREADY_EXISTS"):
-		with lock:
-			state["song_id_mapping"][song] = result["song_id"]
-			with open(state_file, "w") as f:
-				json.dump(state, f, indent="\t", sort_keys=True, ensure_ascii=False)
+	with lock:
+		state["songs"][song] = {
+			"status": result["reason"],
+			"ok": result["reason"] in ("Uploaded", "Matched", "ALREADY_EXISTS"),
+			"id": result["song_id"] if "song_id" in result else None,
+		}
+		with open(state_file, "w") as f:
+			json.dump(state, f, indent="\t", sort_keys=True, ensure_ascii=False)
 
 sync_action = dryrun
 if len(sys.argv) > 1 and sys.argv[1] == "--doit":
