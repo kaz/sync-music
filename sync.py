@@ -35,20 +35,20 @@ def dryrun(song, cover):
 	print(f"DRYRUN: {song}")
 
 def upload(song, cover):
-	key = hashlib.sha512(song.encode("utf-8")).hexdigest()
+	key = hashlib.md5(song.encode("utf-8")).hexdigest()
 
-	resizedCover = f"/tmp/{key}.png"
+	resizedCover = f"/tmp/r_{key}.jpg"
 	extractedCover = None
 
 	if cover is None:
 		print(f"NOTICE: using embedded cover art for {song}")
-		cover = extractedCover = f"/tmp/{key}.jpg"
+		cover = extractedCover = f"/tmp/e_{key}.jpg"
 		proc = subprocess.run(["ffmpeg", "-y", "-i", song, "-an", "-c:v", "copy", extractedCover], stderr=subprocess.DEVNULL)
 		if proc.returncode != 0:
 			print(f"ERROR: failed extract embedded cover art from {song}")
 			return
 
-	proc = subprocess.run(["magick", "convert", cover, "-resize", "768x768>", resizedCover], stderr=subprocess.DEVNULL)
+	proc = subprocess.run(["magick", "convert", cover, "-resize", "600x600>", resizedCover], stderr=subprocess.DEVNULL)
 	if proc.returncode != 0:
 		print(f"ERROR: failed convert cover art {cover}")
 		return
