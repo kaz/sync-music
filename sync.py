@@ -74,11 +74,11 @@ if len(sys.argv) > 1 and sys.argv[1] == "--doit":
 	sync_action = upload
 
 for pwd, dirs, files in os.walk("./library"):
-	songs = [f for f in files if re.search("\.(flac|mp3)$", f)]
+	songs = [f for f in files if re.search("\.(flac|mp3)$", f, flags=re.IGNORECASE)]
 	if len(songs) == 0:
 		continue
 
-	cover = [f for f in files if re.search("\.(jpe?g|png)$", f)]
+	cover = [f for f in files if re.search("\.(jpe?g|png)$", f, flags=re.IGNORECASE)]
 	if len(cover) > 1:
 		print(f"WARN: More than one cover arts were found at {pwd} ({cover[0]} will be used)")
 
