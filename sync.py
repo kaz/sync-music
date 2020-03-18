@@ -24,10 +24,9 @@ mm = google_music.musicmanager(uploader_id=state["uploader_id"])
 def sync(song, cover):
 	try:
 		if song in state["songs"] and state["songs"][song]["ok"]:
-			print(f"skipped: {song}")
 			return
 
-		print(f"uploading: {song}")
+		print(f"SYNC: {song}")
 		sync_action(song, cover)
 	except:
 		traceback.print_exc()
@@ -36,17 +35,23 @@ def dryrun(song, cover):
 	print(f"DRYRUN: {song}")
 
 def upload(song, cover):
-	key = hashlib.sha512(song.encode("utf-8")).hexdigest()
+	key = hashlib.md5(song.encode("utf-8")).hexdigest()
 
-	resizedCover = f"/tmp/{key}.png"
+	resizedCover = f"/tmp/r_{key}.jpg"
 	extractedCover = None
 
 	if cover is None:
 		print(f"NOTICE: using embedded cover art for {song}")
-		cover = extractedCover = f"/tmp/{key}.jpg"
-		subprocess.run(["ffmpeg", "-y", "-i", song, "-an", "-c:v", "copy", extractedCover], stderr=subprocess.DEVNULL)
+		cover = extractedCover = f"/tmp/e_{key}.jpg"
+		proc = subprocess.run(["ffmpeg", "-y", "-i", song, "-an", "-c:v", "copy", extractedCover], stderr=subprocess.DEVNULL)
+		if proc.returncode != 0:
+			print(f"ERROR: failed extract embedded cover art from {song}")
+			return
 
-	subprocess.run(["magick", "convert", cover, "-resize", "768x768>", resizedCover], stderr=subprocess.DEVNULL)
+	proc = subprocess.run(["magick", "convert", cover, "-resize", "600x600>", resizedCover], stderr=subprocess.DEVNULL)
+	if proc.returncode != 0:
+		print(f"ERROR: failed convert cover art {cover}")
+		return
 
 	result = mm.upload(song, album_art_path=resizedCover)
 	print(f"{result['reason']}: {song}")
@@ -69,14 +74,12 @@ if len(sys.argv) > 1 and sys.argv[1] == "--doit":
 	sync_action = upload
 
 for pwd, dirs, files in os.walk("./library"):
-	songs = [f for f in files if re.search("\.(flac|mp3)$", f)]
+	songs = [f for f in files if re.search("\.(flac|mp3)$", f, flags=re.IGNORECASE)]
 	if len(songs) == 0:
 		continue
 
-	cover = [f for f in files if re.search("\.(jpe?g|png)$", f)]
-	if len(cover) == 0:
-		print(f"WARN: No cover arts were found at {pwd}")
-	elif len(cover) > 1:
+	cover = [f for f in files if re.search("\.(jpe?g|png)$", f, flags=re.IGNORECASE)]
+	if len(cover) > 1:
 		print(f"WARN: More than one cover arts were found at {pwd} ({cover[0]} will be used)")
 
 	for song in songs:
